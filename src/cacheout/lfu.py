@@ -6,7 +6,10 @@ import typing as t
 from .cache import T_TTL, Cache, RemovalCause
 
 
-class LFUCache(Cache):
+T = t.TypeVar("T")
+
+
+class LFUCache(t.Generic[T], Cache[T]):
     """
     The Least Frequently Used (LFU) cache is like :class:`.Cache` but uses a least-frequently-used
     eviction policy.
@@ -36,7 +39,7 @@ class LFUCache(Cache):
         # keys first (i.e. keys with a higher count).
         self._access_counts[key] -= 1
 
-    def get(self, key: t.Hashable, default: t.Any = None) -> t.Any:
+    def get(self, key: t.Hashable, default: t.Union[T, object, None] = None) -> T | None:
         with self._lock:
             value = super().get(key, default=default)
             if key in self._cache:
@@ -45,14 +48,14 @@ class LFUCache(Cache):
 
     get.__doc__ = Cache.get.__doc__
 
-    def set(self, key: t.Hashable, value: t.Any, ttl: t.Optional[T_TTL] = None) -> None:
+    def set(self, key: t.Hashable, value: T, ttl: t.Optional[T_TTL] = None) -> None:
         with self._lock:
             super().set(key, value, ttl=ttl)
             self._touch(key)
 
     set.__doc__ = Cache.set.__doc__
 
-    def add(self, key: t.Hashable, value: t.Any, ttl: t.Optional[T_TTL] = None) -> None:
+    def add(self, key: t.Hashable, value: T, ttl: t.Optional[T_TTL] = None) -> None:
         with self._lock:
             super().add(key, value, ttl=ttl)
             self._touch(key)

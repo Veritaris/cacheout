@@ -1,3 +1,5 @@
+import typing
+
 import pytest
 
 from cacheout import Cache
@@ -5,7 +7,7 @@ from cacheout import Cache
 
 @pytest.fixture
 def cache() -> Cache:
-    cache = Cache(maxsize=2)
+    cache = Cache[int](maxsize=2)
     cache.stats.enable()
     cache.add("a", 1)
     cache.add("b", 2)

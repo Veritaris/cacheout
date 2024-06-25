@@ -5,7 +5,10 @@ import typing as t
 from .cache import Cache
 
 
-class LRUCache(Cache):
+T = t.TypeVar("T")
+
+
+class LRUCache(t.Generic[T], Cache[T]):
     """
     Like :class:`.Cache` but uses a least-recently-used eviction policy.
 
@@ -14,7 +17,7 @@ class LRUCache(Cache):
     that only moves entries on ``set()``.
     """
 
-    def get(self, key: t.Hashable, default: t.Any = None) -> t.Any:
+    def get(self, key: t.Hashable, default: t.Union[T, object, None] = None) -> T | None:
         with self._lock:
             value = super().get(key, default=default)
             if key in self._cache:

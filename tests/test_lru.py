@@ -11,7 +11,7 @@ random = SystemRandom()
 
 @pytest.fixture
 def cache() -> LRUCache:
-    _cache = LRUCache(maxsize=10)
+    _cache = LRUCache[int](maxsize=10)
     for n in range(_cache.maxsize):
         _cache.set(n, n)
     assert _cache.full()

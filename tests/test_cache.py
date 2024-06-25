@@ -233,7 +233,7 @@ def test_cache_get_many__ttl_expires_during_call(
     items: dict, iteratee: t.Union[list, str, t.Pattern, t.Callable], expected: dict
 ):
     """Test that cache.get_many() returns without error when cache keys expire during call."""
-    cache = Cache(ttl=1, timer=lambda: 0)
+    cache = Cache[t.Any](ttl=1, timer=lambda: 0)
 
     cache.set_many(items)
     assert cache.get_many(iteratee) == expected

@@ -20,6 +20,8 @@ from .stats import CacheStatsTracker
 
 F = t.TypeVar("F", bound=t.Callable[..., t.Any])
 
+T = t.TypeVar("T", bound=object)
+
 #: Decorator type.
 T_DECORATOR = t.Callable[[F], F]
 
@@ -27,7 +29,7 @@ T_DECORATOR = t.Callable[[F], F]
 T_TTL = t.Union[int, float]
 
 #: Possible types that can be used to filter cache keys.
-T_FILTER = t.Union[str, t.List[t.Hashable], t.Pattern, t.Callable]
+T_FILTER = t.Union[str, t.List[t.Hashable], t.Set[t.Any], t.Pattern, t.Callable]
 
 #: Callback that will be executed when a cache entry is retrieved. It is called with arguments
 #: ``(key, value, exists)`` where `key` is the cache key, `value` is the value retrieved (could be
@@ -67,7 +69,7 @@ class RemovalCause(Enum):
     POPITEM = auto()
 
 
-class Cache:
+class Cache(t.Generic[T]):
     """
     An in-memory, FIFO cache object.
 
@@ -266,7 +268,7 @@ class Cache:
             return False
         return len(self) >= self.maxsize
 
-    def get(self, key: t.Hashable, default: t.Any = None) -> t.Any:
+    def get(self, key: t.Hashable, default: t.Union[T, object, None] = None) -> T | None:
         """
         Return the cache value for `key` or `default` or ``missing(key)`` if it doesn't exist or has
         expired.
@@ -284,7 +286,7 @@ class Cache:
         with self._lock:
             return self._get(key, default=default)
 
-    def _get(self, key: t.Hashable, default: t.Any = None) -> t.Any:
+    def _get(self, key: t.Hashable, default: t.Union[T, object, None] = None) -> T | None:
         existed = True
         try:
             value = self._cache[key]
@@ -310,7 +312,7 @@ class Cache:
 
         return value
 
-    def get_many(self, iteratee: T_FILTER) -> dict:
+    def get_many(self, iteratee: T_FILTER) -> dict[t.Hashable, T | None]:
         """
         Return many cache values as a ``dict`` of key/value pairs filtered by an `iteratee`.
 
@@ -327,7 +329,7 @@ class Cache:
         with self._lock:
             return self._get_many(iteratee)
 
-    def _get_many(self, iteratee: T_FILTER) -> dict:
+    def _get_many(self, iteratee: T_FILTER) -> dict[t.Hashable, T | None]:
         result = {}
         keys = self._filter_keys(iteratee)
         for key in keys:
@@ -336,7 +338,7 @@ class Cache:
                 result[key] = value
         return result
 
-    def add(self, key: t.Hashable, value: t.Any, ttl: t.Optional[T_TTL] = None) -> None:
+    def add(self, key: t.Hashable, value: T, ttl: t.Optional[T_TTL] = None) -> None:
         """
         Add cache key/value if it doesn't already exist.
 
@@ -351,7 +353,7 @@ class Cache:
         with self._lock:
             self._add(key, value, ttl=ttl)
 
-    def _add(self, key: t.Hashable, value: t.Any, ttl: t.Optional[T_TTL] = None) -> None:
+    def _add(self, key: t.Hashable, value: T, ttl: t.Optional[T_TTL] = None) -> None:
         if self._has(key):
             return
         self._set(key, value, ttl=ttl)
@@ -368,7 +370,7 @@ class Cache:
         for key, value in items.items():
             self.add(key, value, ttl=ttl)
 
-    def set(self, key: t.Hashable, value: t.Any, ttl: t.Optional[T_TTL] = None) -> None:
+    def set(self, key: t.Hashable, value: T, ttl: t.Optional[T_TTL] = None) -> None:
         """
         Set cache key/value and replace any previously set cache key.
 
@@ -384,7 +386,7 @@ class Cache:
         with self._lock:
             self._set(key, value, ttl=ttl)
 
-    def _set(self, key: t.Hashable, value: t.Any, ttl: t.Optional[T_TTL] = None) -> None:
+    def _set(self, key: t.Hashable, value: T, ttl: t.Optional[T_TTL] = None) -> None:
         if ttl is None:
             ttl = self.ttl
 
@@ -591,7 +593,7 @@ class Cache:
 
         return count
 
-    def popitem(self) -> t.Tuple[t.Hashable, t.Any]:
+    def popitem(self) -> t.Tuple[t.Hashable, T]:
         """
         Delete and return next cache item, ``(key, value)``, based on cache replacement policy while
         ignoring expiration times (i.e. the selection of the item to pop is based solely on the
